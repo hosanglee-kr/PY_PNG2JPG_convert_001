@@ -330,5 +330,3 @@ if __name__ == "__main__":
                 p.join()
 
         print("Image conversion process finished.")
-
-  
