@@ -35,19 +35,16 @@ def setup_logging(log_folder, base_folder_name):
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
 
-def get_processed_files_path(output_base_folder, base_folder_name, date_str=None):
+def get_processed_files_path(output_base_folder, base_folder_name, date_str):
     """날짜별 처리된 파일 목록 파일 경로를 생성합니다."""
-    if date_str is None:
-        date_str = datetime.now().strftime("%Y%m")
-    year_month = date_str
+    year_month = date_str[:6]  # YYYYMM 추출
     return os.path.join(output_base_folder, "mccb", base_folder_name, "Processed_files", year_month,
                         f"{base_folder_name}_{PROCESSED_FILES_PREFIX}{date_str}.txt")
 
-def load_processed_files_from_file(output_base_folder, base_folder_name):
+def load_processed_files_from_file(output_base_folder, base_folder_name, target_date_str):
     """처리된 파일 목록을 파일에서 로드하여 전역 변수에 저장합니다."""
     global processed_files
-    today_str = datetime.now().strftime("%Y%m")
-    filepath = get_processed_files_path(output_base_folder, base_folder_name, today_str)
+    filepath = get_processed_files_path(output_base_folder, base_folder_name, target_date_str)
     if os.path.exists(filepath):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -58,12 +55,13 @@ def load_processed_files_from_file(output_base_folder, base_folder_name):
                         processed_files[file_path] = float(timestamp)
         except Exception as e:
             logging.error(f"처리된 파일 목록 로드 중 오류 발생: {e}")
+    else:
+        processed_files = {} # 해당 날짜 처리 이력이 없으면 초기화
 
-def save_processed_files_to_file(output_base_folder, base_folder_name):
+def save_processed_files_to_file(output_base_folder, base_folder_name, target_date_str):
     """현재 처리된 파일 목록을 파일에 저장합니다."""
     global processed_files
-    today_str = datetime.now().strftime("%Y%m")
-    filepath = get_processed_files_path(output_base_folder, base_folder_name, today_str)
+    filepath = get_processed_files_path(output_base_folder, base_folder_name, target_date_str)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     existing_data = {}
@@ -192,62 +190,60 @@ def find_and_process_png_files(config, base_name, target_date_str=None):
     base_folder_name = base_name.lower()
 
     if target_date_str:
-        now = datetime.now()
-        target_yearMonth_str = now.strftime("%Y%m")
-
-        if re.match(r'^\d{6}$', target_date_str):
-            watch_folder = base_folder
-            #print(f"[{base_folder_name}] {target_date_str} 폴더 처리 시작: {watch_folder}")
-        else:
-            print("오류: 날짜 형식이 잘못되었습니다. YYYYMM 형식으로 입력해주세요.")
+        if not re.match(r'^\d{8}$', target_date_str):
+            print("오류: 날짜 형식이 잘못되었습니다.MMDD 형식으로 입력해주세요.")
             return
     else:
-        now = datetime.now()
-        target_yearMonth_str = now.strftime("%Y%m")
-        watch_folder = base_folder
-        #print(f"[{base_folder_name}] 오늘 날짜 폴더 처리 시작: {watch_folder}")
+        target_date = datetime.now().date()
+        target_date_str = target_date.strftime("%Y%m%d")
 
-    load_processed_files_from_file(output_base_folder, base_folder_name)
+    watch_folder = base_folder
 
-    print(f"[{base_folder_name}] 폴더 스캔 시작: {watch_folder}")
-    for root, folders, files in os.walk(watch_folder):
-        for folder in folders:
-            if folder in ['NG', 'OK', 'NG_OK']:
-                folder_yearMonth = os.path.join(watch_folder, folder, target_yearMonth_str)
-                if not os.path.exists(folder_yearMonth):
-                    continue
-                for sub_root, folder_yearMonth_sides, sub_files in os.walk(folder_yearMonth):
-                    for folder_side in folder_yearMonth_sides:
-                        if folder_side in ['LEFT', 'LINE', 'LINE_TAP', 'LOAD', 'LOAD_TAP', 'RIGHT', 'TOP']:
-                            folder_yearMonth_side = os.path.join(folder_yearMonth, folder_side)
-                            if not os.path.exists(folder_yearMonth_side):
-                                continue
-                            for sub_sub_root, _, sub_files in os.walk(folder_yearMonth_side):
-                                for filename in sub_files:
-                                    if filename.lower().endswith(".png"):
-                                        png_path = os.path.join(sub_sub_root, filename)
-                                        current_modified_time = os.path.getmtime(png_path)
+    load_processed_files_from_file(output_base_folder, base_folder_name, target_date_str)
 
-                                        if png_path not in processed_files or processed_files[png_path] != current_modified_time:
-                                            print(f"[{base_folder_name}] 새로운 또는 수정된 PNG 발견: {png_path}")
-                                            if is_file_stable(png_path):
-                                                convert_png_to_jpg(png_path, output_base_folder, base_folder, jpg_quality)
-                                                save_processed_files_to_file(output_base_folder, base_folder_name)
-                                            else:
-                                                print(f"[{base_folder_name}] PNG 파일이 아직 안정되지 않음: {png_path}")
+    print(f"[{base_folder_name}] 폴더 스캔 시작: {watch_folder} (날짜: {target_date_str})")
+    for root, _, files in os.walk(watch_folder):
+        for filename in files:
+            if filename.lower().endswith(".png"):
+                png_path = os.path.join(root, filename)
+                relative_path = os.path.relpath(png_path, watch_folder)
+                path_parts = relative_path.split(os.sep)
+
+                if len(path_parts) == 4 and \
+                   path_parts[0] in ['NG', 'OK', 'NG_OK'] and \
+                   path_parts[1] == target_date.strftime("%Y%m") and \
+                   path_parts[2] in ['LEFT', 'LINE', 'LINE_TAP', 'LOAD', 'LOAD_TAP', 'RIGHT', 'TOP']:
+
+                    try:
+                        modified_timestamp = os.path.getmtime(png_path)
+                        modified_datetime = datetime.fromtimestamp(modified_timestamp)
+                        modified_date = modified_datetime.date()
+
+                        if modified_date == target_date:
+                            if png_path not in processed_files or processed_files[png_path] != modified_timestamp:
+                                print(f"[{base_folder_name}] 새로운 또는 수정된 PNG 발견 (날짜 일치): {png_path}")
+                                if is_file_stable(png_path):
+                                    convert_png_to_jpg(png_path, output_base_folder, base_folder, jpg_quality)
+                                    save_processed_files_to_file(output_base_folder, base_folder_name, target_date_str)
+                                else:
+                                    print(f"[{base_folder_name}] PNG 파일이 아직 안정되지 않음: {png_path}")
+                        elif modified_date > target_date:
+                            # 과거 날짜 처리 후 현재 이후 날짜의 파일은 무시 (최적화)
+                            continue
+
+                    except Exception as e:
+                        logging.error(f"파일 정보 가져오기 오류: {png_path} - {e}")
 
 def main():
     """스크립트의 주요 실행 로직을 포함합니다."""
     parser = argparse.ArgumentParser(description="특정 Base 폴더의 PNG 이미지를 JPG로 변환합니다.")
     parser.add_argument("base_name", help="처리할 Base 폴더 이름 (config.ini에 정의).")
-    parser.add_argument("date", nargs="?", help="특정 날짜 폴더 처리 (YYYYMM). 생략 시 오늘 날짜 처리.")
+    parser.add_argument("date", nargs="?", default=datetime.now().strftime("%Y%m%d"),
+                        help="처리할 특정 날짜 (YYYYMMDD). 생략 시 오늘 날짜 처리.")
 
-    #args = parser.parse_args()
-    base_name = "ABH125c_1"
-    base_name = base_name.lower()  
-
-    #today_yearMonth = args.date
-    today_yearMonth = datetime.now().strftime("%Y%m")
+    args = parser.parse_args()
+    base_name = args.base_name.lower()
+    target_process_date = args.date
 
     config = load_config()
     output_base_folder = config['Paths']['output_base_folder']
@@ -255,8 +251,9 @@ def main():
     setup_logging(log_folder, base_name)
 
     while True:
-        find_and_process_png_files(config, base_name, today_yearMonth)
+        find_and_process_png_files(config, base_name, target_process_date)
         time.sleep(SCAN_INTERVAL)
 
 if __name__ == "__main__":
     main()
+    
