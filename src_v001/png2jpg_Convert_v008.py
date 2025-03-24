@@ -127,84 +127,10 @@ def save_processed_files(output_base_folder, base_folder_name, processed_dict):
             f.flush()  # 버퍼링된 데이터를 강제로 디스크에 씁니다.
     except Exception as e:
         logging.error(f"Error writing to processed files list: {e}")
-# def save_processed_files(output_base_folder, base_folder_name, processed_dict):
-#     # 오늘 날짜의 처리된 파일 목록을 파일에 저장합니다.
-#     today_str = datetime.now().strftime("%Y%m")
-#     filepath = get_processed_files_filename(output_base_folder, base_folder_name, today_str)
-#     os.makedirs(os.path.dirname(filepath), exist_ok=True) # 폴더가 없으면 생성
-#     updated_processed_dict = {}
-#     for file_path, timestamp in processed_dict.items():
-#         if os.path.exists(file_path):
-#             try:
-#                 current_modified_time = os.path.getmtime(file_path)
-#                 updated_processed_dict[file_path] = current_modified_time
-#             except FileNotFoundError:
-#                 logging.warning(f"File not found while saving processed list: {file_path}")
-#             except Exception as e:
-#                 logging.error(f"Error getting modification time for {file_path} while saving processed list: {e}")
-#         else:
-#             logging.warning(f"File path not found in processed list: {file_path}")
 
-#         updated_processed_dict = {}
-#         for file_path, timestamp in processed_dict.items():
-#             if os.path.exists(file_path):
-#                 try:
-#                     current_modified_time = os.path.getmtime(file_path)
-#                     updated_processed_dict[file_path] = current_modified_time
-#                 except FileNotFoundError:
-#                     logging.warning(f"File not found while saving processed list: {file_path}")
-#                 except Exception as e:
-#                     logging.error(f"Error getting modification time for {file_path} while saving processed list: {e}")
-#             else:
-#                 logging.warning(f"File path not found in processed list: {file_path}")
-
-#         for file_path, timestamp in updated_processed_dict.items():
-#             existing_data[file_path] = str(timestamp)  # 업데이트 또는 추가
-
-#         try:
-#             with open(filepath, 'w', encoding='utf-8') as f:
-#                 for file_path, timestamp in existing_data.items():
-#                     f.write(f"{file_path}{PROCESSED_FILE_DELIMITER}{timestamp}\n")
-#                 f.flush()  # 버퍼링된 데이터를 강제로 디스크에 씁니다.
-#         except Exception as e:
-#             logging.error(f"Error writing to processed files list: {e}")
-
-#     # if updated_processed_dict: # updated_processed_dict가 비어있지 않을때만 파일에 저장
-#     #     try:
-#     #         with open(filepath, 'w') as f:
-#     #             for file_path, timestamp in updated_processed_dict.items():
-#     #                 f.write(f"{file_path}{PROCESSED_FILE_DELIMITER}{timestamp}\n")
-#     #             f.flush() # 버퍼링된 데이터를 강제로 디스크에 씁니다.
-#     #     except Exception as e:
-#     #         logging.error(f"Error writing to processed files list: {e}")
-#         # finally:
-#         #     if 'f' in locals() and not f.closed:
-#         #         f.close() # 파일을 명시적으로 닫습니다.
-
-#     # with open(filepath, 'w') as f:
-#     #     for file_path, timestamp in updated_processed_dict.items():
-#     #         f.write(f"{file_path}{PROCESSED_FILE_DELIMITER}{timestamp}\n")
-
-# # def save_processed_files(output_base_folder, base_folder_name, processed_dict):
-# #     # 오늘 날짜의 처리된 파일 목록을 파일에 저장합니다.
-# #     today_str = datetime.now().strftime("%Y%m")
-# #     filepath = get_processed_files_filename(output_base_folder, base_folder_name, today_str)
-# #     os.makedirs(os.path.dirname(filepath), exist_ok=True) # 폴더가 없으면 생성
-# #     with open(filepath, 'w') as f:
-# #         for file_path, timestamp in processed_dict.items():
-# #             f.write(f"{file_path}{PROCESSED_FILE_DELIMITER}{timestamp}\n")
 
 def convert_image(input_path, output_base_folder, watch_base_folder, quality):
-    # 단일 프로세스에서 이미지를 변환하는 함수입니다.
-    # 원본 PNG의 흑백/컬러 모드를 유지하여 JPG로 변환합니다.
-    # JPG 저장 폴더 구조는 지정된 규칙을 따릅니다.
-    #
-    # Args:
-    #     input_path (str): 변환할 PNG 파일의 전체 경로.
-    #     output_base_folder (str): 변환된 JPG 파일을 저장할 최상위 폴더 경로 (예: '..\Output').
-    #     watch_base_folder (str): 감시 대상 최상위 폴더 경로 (상대 경로 계산에 사용).
-    #     quality (int): JPG 이미지 품질 (0-100).
-    #     processed_files (dict): 이미 처리된 파일 경로와 수정 시간을 저장하는 딕셔너리.
+
     global GLOBAL_GRAYSCALE_MODE
     global processed_files # 전역 변수 사용 선언
 
@@ -277,14 +203,7 @@ def convert_image(input_path, output_base_folder, watch_base_folder, quality):
         logging.error(f"An unexpected error occurred during conversion of {input_path}: {e}")
 
 def is_stable(file_path, wait_time=1):
-    # 파일이 안정적인 상태인지 확인합니다.
-    #
-    # Args:
-    #     file_path (str): 확인할 파일 경로.
-    #     wait_time (int): 대기 시간 (초).
-    #
-    # Returns:
-    #     bool: 파일이 안정적이면 True, 아니면 False.
+
     try:
         initial_size = os.path.getsize(file_path) # 파일의 초기 크기를 얻습니다.
         time.sleep(wait_time) # 잠시 대기합니다.
@@ -366,12 +285,10 @@ if __name__ == "__main__":
         now = datetime.now()
         target_yearMonth_str = now.strftime("%Y%m") # 현재 날짜를YYYYMM 형식으로 변경
         watch_folder = base_folder
-        #watch_folder = os.path.join(base_folder, target_date_str)
         print(f"Processing folder for base: {base_folder}, today's date: ({watch_folder})")
 
     # 오늘 날짜의 처리된 파일 목록을 로드합니다 (base 폴더 이름 포함).
     load_processed_files(output_base_folder, base_folder_name)
-    #processed_files = load_processed_files(output_base_folder, base_folder_name)
 
     # 무한 루프를 시작하여 폴더를 주기적으로 스캔하고 PNG 파일을 처리합니다.
     while True:
@@ -415,11 +332,5 @@ if __name__ == "__main__":
         
                                                 else:
                                                     print(f"[{base_folder_name}] PNG file not yet stable: {png_path}")
-                                            # elif os.path.exists(output_path) and png_path not in processed_files:
-                                            #     processed_files[png_path] = current_modified_time
-                                            #     print(f"[{base_folder_name}] PNG already processed (JPG exists), updating processed time: {png_path}")
 
-        # 현재 처리된 파일 목록을 오늘 날짜의 파일에 저장합니다 (base 폴더 이름 포함).
-        ##save_processed_files(output_base_folder, base_folder_name, processed_files)
-        #print(f"[{base_folder_name}] Waiting for {SCAN_INTERVAL} seconds before next scan...")
         time.sleep(SCAN_INTERVAL)
