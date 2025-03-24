@@ -11,12 +11,13 @@ from PIL import Image
 import subprocess
 import random
 
+import png2jpg_Convert_v001
 # 테스트를 위해 스크립트 import (상대 경로 주의)
-try:
-    import your_script_name  # 실제 스크립트 파일 이름으로 변경
-except ImportError:
-    print("Error: 스크립트 파일을 찾을 수 없습니다. 파일 이름을 확인하세요.")
-    raise
+# try:
+#     import png2jpg_Convert_v001  # 실제 스크립트 파일 이름으로 변경
+# except ImportError:
+#     print("Error: 스크립트 파일을 찾을 수 없습니다. 파일 이름을 확인하세요.")
+#     raise
 
 class TestImageConverter(unittest.TestCase):
     @classmethod
@@ -27,7 +28,8 @@ class TestImageConverter(unittest.TestCase):
         cls.watch_base_folder = os.path.join(cls.test_base_dir, "watch")
         cls.output_base_folder = os.path.join(cls.test_base_dir, "output")
         cls.log_folder = os.path.join(cls.test_base_dir, "log")
-        cls.config_file = os.path.join(cls.test_base_dir, "config.ini")
+
+        cls.config_file = os.path.join("./config.ini") # 수정된 부분
 
         os.makedirs(cls.watch_base_folder, exist_ok=True)
         os.makedirs(cls.output_base_folder, exist_ok=True)
@@ -44,7 +46,7 @@ class TestImageConverter(unittest.TestCase):
             config.write(f)
 
         # 테스트 대상 스크립트가 설정 파일을 읽도록 설정
-        your_script_name.config_file = cls.config_file
+        png2jpg_Convert_v001.config_file = cls.config_file
 
     @classmethod
     def tearDownClass(cls):
@@ -89,7 +91,7 @@ class TestImageConverter(unittest.TestCase):
 
     def run_script(self, date_arg=None):
         # 스크립트를 별도의 서브프로세스로 실행하는 helper 메서드
-        script_path = os.path.abspath("your_script_name.py")
+        script_path = os.path.abspath("./src_v001/png2jpg_Convert_v001.py")
         args = [sys.executable, script_path]
         if date_arg:
             args.append(date_arg)
@@ -197,7 +199,7 @@ class TestImageConverter(unittest.TestCase):
         self.create_dummy_png(png_filename, folder=watch_folder_specific)
 
         # 명령행 인수를 사용하여 스크립트 실행 (별도 프로세스로 실행해야 함)
-        script_path = os.path.abspath("your_script_name.py")
+        script_path = os.path.abspath("./src_v001/png2jpg_Convert_v001.py")
         result = subprocess.run([sys.executable, script_path, specific_date], capture_output=True, text=True)
         self.assertIn(f"Processing folder for date: {specific_date}", result.stdout)
 
@@ -230,7 +232,7 @@ class TestImageConverter(unittest.TestCase):
         self.create_dummy_png(png_filename)
 
         # 스크립트 실행 (별도 프로세스로)
-        script_path = os.path.abspath("your_script_name.py")
+        script_path = os.path.abspath("./src_v001/png2jpg_Convert_v001.py")
         process = subprocess.Popen([sys.executable, script_path, self.today_str])
         time.sleep(5) # 충분한 처리 시간 부여
         process.terminate()
@@ -474,7 +476,7 @@ class TestImageConverter(unittest.TestCase):
             config.write(f)
 
         import subprocess
-        script_path = os.path.abspath("your_script_name.py")
+        script_path = os.path.abspath("./src_v001/png2jpg_Convert_v001.py")
         result = subprocess.run([sys.executable, script_path, self.today_str], capture_output=True, text=True)
         self.assertIn(f"Error: Watch folder does not exist: {non_existent_folder}", result.stdout)
 
@@ -500,7 +502,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # 실제 스크립트 파일이 있는지 확인
-    script_path = os.path.abspath("your_script_name.py")
+    script_path = os.path.abspath("./src_v001/png2jpg_Convert_v001.py")
     if not os.path.exists(script_path):
         print(f"Error: 스크립트 파일 '{script_path}'을 찾을 수 없습니다. 파일 이름을 확인하세요.")
         sys.exit(1)

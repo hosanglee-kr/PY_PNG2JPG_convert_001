@@ -5,7 +5,11 @@ __pycache__/
 
 # C extensions
 *.so
+src_v001/venv2
+test_env_all/
 
+
+IMAGE_DIR/
 # Distribution / packaging
 .Python
 build/

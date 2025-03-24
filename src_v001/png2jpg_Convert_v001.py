@@ -249,8 +249,10 @@ if __name__ == "__main__":
 
     # 멀티프로세싱 Manager를 생성합니다.
     manager = Manager()
+    
     # Manager를 통해 프로세스 안전한 Set 객체를 생성합니다.
-    processed_files = manager.Set()
+    processed_files = manager.list() # 수정된 부분
+    #processed_files = manager.set() # 수정된 부분
 
     event_handler = PNGCreationHandler(file_queue, output_base_folder)
     observer = Observer()
@@ -274,13 +276,15 @@ if __name__ == "__main__":
                         current_size = os.path.getsize(png_path)
                         if initial_size == current_size and current_size > 0:
                             file_queue.put(png_path)
-                            processed_files.add(png_path)
+                            processed_files.append(png_path) # 수정된 부분
+                            #processed_files.add(png_path)
                         else:
                             print(f"PNG file might be incomplete: {png_path}")
                     except Exception as e:
                         logging.error(f"Error checking unprocessed file: {e}")
 
-        processes =
+        processes = []
+        ##processes =
         for i in range(num_processes):
             process = Process(target=convert_image, args=(file_queue.get, output_base_folder, jpg_quality, file_queue))
             process.daemon = True
@@ -312,7 +316,8 @@ if __name__ == "__main__":
                                 current_size = os.path.getsize(png_path)
                                 if initial_size == current_size and current_size > 0:
                                     file_queue.put(png_path)
-                                    processed_files.add(png_path)
+                                    processed_files.append(png_path) # 수정된 부분
+                                    #processed_files.add(png_path)
                                 else:
                                     print(f"PNG file might be incomplete: {png_path}")
                             except Exception as e:
