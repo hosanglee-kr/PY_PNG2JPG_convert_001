@@ -2,8 +2,13 @@ import subprocess
 import time
 import os
 
-# 프로그램 1의 경로 (실제 경로로 수정해야 함)
-program1_path = "C:\\path\\to\\your\\png2jpg_Convert_v013.py"
+G_WORKER_EXECUTE_EXE = True
+
+if G_WORKER_EXECUTE_EXE == True:
+    # 프로그램 1의 경로 (실제 경로로 수정해야 함)
+    program1_path = "C:\\path\\to\\your\\png2jpg_Convert_v013.py"
+else:
+    program1_path = "C:\\path\\to\\your\\png2jpg_Convert_v013.exe"
 
 # 프로그램 1을 실행할 때 사용할 각기 다른 argument
 arguments_list = [
