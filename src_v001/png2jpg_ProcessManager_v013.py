@@ -3,14 +3,13 @@ import time
 import os
 
 # 프로그램 1의 경로 (실제 경로로 수정해야 함)
-program1_path = "C:\\path\\to\\your\\program1.py"
+program1_path = "C:\\path\\to\\your\\png2jpg_Convert_v013.py"
 
 # 프로그램 1을 실행할 때 사용할 각기 다른 argument
 arguments_list = [
-    ["arg1_1", "arg1_2"],
-    ["arg2_1", "arg2_2", "arg2_3"],
-    ["arg3_1"],
-    ["arg4_1", "arg4_2", "arg4_3", "arg4_4"],
+    ["ABH125c_1"],
+    ["ABH125c_2"],
+    ["ABH125c_3"],
 ]
 
 # 실행된 프로그램 1의 process를 저장할 딕셔너리
