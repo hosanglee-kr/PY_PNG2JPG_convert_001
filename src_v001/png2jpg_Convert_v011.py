@@ -20,19 +20,15 @@ GLOBAL_GRAYSCALE_MODE = None  # 이미지 모드 (True: 흑백, False: 컬러, N
 
 # --- 함수 ---
 def load_config():
-    ##"""설정 파일에서 설정을 로드합니다."""
+    """설정 파일에서 설정을 로드합니다."""
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE, encoding='utf-8')
     return config
 
 def setup_logging(log_folder, base_folder_name):
-    ##"""로깅을 설정합니다."""
-    today = datetime.now()
-    year_month = today.strftime("%Y%m")
-    day = today.strftime("%Y%m%d")
-    log_subfolder = os.path.join(log_folder, year_month)
-    os.makedirs(log_subfolder, exist_ok=True)
-    log_filename = os.path.join(log_subfolder, f"{base_folder_name}_error_{day}.log")
+    """로깅을 설정합니다."""
+    today = datetime.now().strftime("%Y%m%d")
+    log_filename = os.path.join(log_folder, f"{base_folder_name}_error_{today}.log")
     logging.basicConfig(
         filename=log_filename,
         level=logging.ERROR,
@@ -40,13 +36,13 @@ def setup_logging(log_folder, base_folder_name):
     )
 
 def get_processed_files_path(output_base_folder, base_folder_name, date_str):
-    ##"""날짜별 처리된 파일 목록 파일 경로를 생성합니다."""
+    """날짜별 처리된 파일 목록 파일 경로를 생성합니다."""
     year_month = date_str[:6]  # YYYYMM 추출
     return os.path.join(output_base_folder, "mccb", base_folder_name, "Processed_files", year_month,
                         f"{base_folder_name}_{PROCESSED_FILES_PREFIX}{date_str}.txt")
 
 def load_processed_files_from_file(output_base_folder, base_folder_name, target_date_str):
-    ##"""처리된 파일 목록을 파일에서 로드하여 전역 변수에 저장합니다."""
+    """처리된 파일 목록을 파일에서 로드하여 전역 변수에 저장합니다."""
     global processed_files
     filepath = get_processed_files_path(output_base_folder, base_folder_name, target_date_str)
     if os.path.exists(filepath):
@@ -63,7 +59,7 @@ def load_processed_files_from_file(output_base_folder, base_folder_name, target_
         processed_files = {} # 해당 날짜 처리 이력이 없으면 초기화
 
 def save_processed_files_to_file(output_base_folder, base_folder_name, target_date_str):
-    ##"""현재 처리된 파일 목록을 파일에 저장합니다."""
+    """현재 처리된 파일 목록을 파일에 저장합니다."""
     global processed_files
     filepath = get_processed_files_path(output_base_folder, base_folder_name, target_date_str)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -105,7 +101,7 @@ def save_processed_files_to_file(output_base_folder, base_folder_name, target_da
         logging.error(f"처리된 파일 목록 쓰기 중 오류 발생: {e}")
 
 def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, quality):
-    ##"""PNG 이미지를 JPG 형식으로 변환합니다."""
+    """PNG 이미지를 JPG 형식으로 변환합니다."""
     global GLOBAL_GRAYSCALE_MODE
     global processed_files
 
@@ -164,7 +160,7 @@ def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, qualit
         logging.error(f"PNG 변환 중 예기치 않은 오류 발생: {input_path} - {e}")
 
 def is_file_stable(file_path, wait_time=1):
-    ##"""파일이 완전히 쓰여졌는지 확인합니다."""
+    """파일이 완전히 쓰여졌는지 확인합니다."""
     try:
         initial_size = os.path.getsize(file_path)
         time.sleep(wait_time)
@@ -181,7 +177,7 @@ def is_file_stable(file_path, wait_time=1):
         return False
 
 def find_and_process_png_files(config, base_name, target_date_str=None):
-    ##"""주어진 Base 폴더에서 PNG 파일을 찾아 변환합니다."""
+    """주어진 Base 폴더에서 PNG 파일을 찾아 변환합니다."""
     base_folders = dict(config.items('BaseFolders'))
     output_base_folder = config['Paths']['output_base_folder']
     jpg_quality = int(config['Image']['jpg_quality'])
@@ -195,12 +191,7 @@ def find_and_process_png_files(config, base_name, target_date_str=None):
 
     if target_date_str:
         if not re.match(r'^\d{8}$', target_date_str):
-            print("오류: 날짜 형식이 잘못되었습니다.<\ctrl3348>MMDD 형식으로 입력해주세요.")
-            return
-        try:
-            target_date = datetime.strptime(target_date_str, "%Y%m%d").date()
-        except ValueError:
-            print("오류: 유효하지 않은 날짜 형식입니다.<\ctrl3348>MMDD 형식으로 입력해주세요.")
+            print("오류: 날짜 형식이 잘못되었습니다.MMDD 형식으로 입력해주세요.")
             return
     else:
         target_date = datetime.now().date()
@@ -244,20 +235,15 @@ def find_and_process_png_files(config, base_name, target_date_str=None):
                         logging.error(f"파일 정보 가져오기 오류: {png_path} - {e}")
 
 def main():
-    ##"""스크립트의 주요 실행 로직을 포함합니다."""
+    """스크립트의 주요 실행 로직을 포함합니다."""
     parser = argparse.ArgumentParser(description="특정 Base 폴더의 PNG 이미지를 JPG로 변환합니다.")
     parser.add_argument("base_name", help="처리할 Base 폴더 이름 (config.ini에 정의).")
     parser.add_argument("date", nargs="?", default=datetime.now().strftime("%Y%m%d"),
                         help="처리할 특정 날짜 (YYYYMMDD). 생략 시 오늘 날짜 처리.")
 
-
-    #args = parser.parse_args()
-    base_name = "ABH125c_1"
-    base_name = base_name.lower()  
-
-    #target_process_date = args.date
-    target_process_date = datetime.now().strftime("%Y%m%d")
-
+    args = parser.parse_args()
+    base_name = args.base_name.lower()
+    target_process_date = args.date
 
     config = load_config()
     output_base_folder = config['Paths']['output_base_folder']
