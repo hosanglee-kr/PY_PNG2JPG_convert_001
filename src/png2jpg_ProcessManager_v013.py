@@ -100,7 +100,7 @@ def get_process_usage(pid, args):
 
 def _save_monitoring_data_to_csv():
     # 모니터링 데이터를 CSV 파일에 저장합니다.
-    global G_MONITORING_DATA, G_LAST_SAVE_TIME, G_START_TIME_STR
+    global G_MONITORING_DATA, G_LAST_SAVE_TIME  #, G_START_TIME_STR
     if not G_MONITORING_DATA:
         return
 
