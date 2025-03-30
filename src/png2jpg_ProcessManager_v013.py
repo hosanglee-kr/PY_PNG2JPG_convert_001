@@ -118,7 +118,7 @@ def _save_monitoring_data_to_csv():
             writer.writerows(G_MONITORING_DATA)  # 데이터 리스트의 각 딕셔너리를 CSV 행으로 씁니다.
 
         logging.info(f"모니터링 데이터를 {filename}에 저장했습니다.")
-        G_MONITORING_DATA =# 저장 후 데이터 리스트를 비웁니다.
+        G_MONITORING_DATA = [] # 저장 후 데이터 리스트를 비웁니다.
         G_LAST_SAVE_TIME = time.time()  # 마지막 저장 시간 업데이트
     except Exception as e:
         logging.error(f"CSV 파일 저장 중 오류: {e}")
