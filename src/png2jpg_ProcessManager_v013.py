@@ -31,7 +31,7 @@ G_FILE_SAVE_INTERVAL_SEC = 30  # 초 단위 파일 저장 간격 (모니터링 �
 G_WORKER_EXECUTE_EXE = True  # True: 프로그램 1을 Python 스크립트로 실행, False: 실행 파일로 실행
 G_ENABLE_MONITORING = True  # True: 모니터링 기능 활성화, False: 비활성화
 G_ENABLE_FILE_SAVE = True  # True: 파일 저장 기능 활성화, False: 비활성화
-G_MONITORING_DATA =# 수집된 모니터링 데이터를 임시로 저장할 리스트
+G_MONITORING_DATA = [] # 수집된 모니터링 데이터를 임시로 저장할 리스트
 G_LAST_SAVE_TIME = time.time()  # 마지막으로 데이터를 파일에 저장한 시간
 G_START_TIME_STR = datetime.now().strftime("%Y%m%d_%H%M%S") # 프로그램 시작 시각 (모니터링 파일명에 사용)
 G_PROCESSES = {}  # 실행된 프로그램 1의 process 객체를 저장할 딕셔너리 (키: "program1_인덱스", 값: subprocess.Popen 객체)
@@ -100,7 +100,7 @@ def get_process_usage(pid, args):
 
 def _save_monitoring_data_to_csv():
     # 모니터링 데이터를 CSV 파일에 저장합니다.
-    global G_MONITORING_DATA, G_LAST_SAVE_TIME, G_START_TIME_STR
+    global G_MONITORING_DATA, G_LAST_SAVE_TIME  #, G_START_TIME_STR
     if not G_MONITORING_DATA:
         return
 
@@ -118,7 +118,7 @@ def _save_monitoring_data_to_csv():
             writer.writerows(G_MONITORING_DATA)  # 데이터 리스트의 각 딕셔너리를 CSV 행으로 씁니다.
 
         logging.info(f"모니터링 데이터를 {filename}에 저장했습니다.")
-        G_MONITORING_DATA =# 저장 후 데이터 리스트를 비웁니다.
+        G_MONITORING_DATA = [] # 저장 후 데이터 리스트를 비웁니다.
         G_LAST_SAVE_TIME = time.time()  # 마지막 저장 시간 업데이트
     except Exception as e:
         logging.error(f"CSV 파일 저장 중 오류: {e}")
