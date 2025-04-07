@@ -32,7 +32,7 @@ import configparser
 # - 흑백 또는 컬러 변환 옵션을 제공해야 합니다.
 
 # --- 설정 ---
-CONFIG_FILE = '.\src_v001\config_v003.ini'
+CONFIG_FILE = r'.\src_v001\config_v003.ini'
 SCAN_INTERVAL = 1  # 폴더 스캔 간격 (초)
 PROCESSED_FILES_PREFIX = "processed_files_"
 PROCESSED_FILE_DELIMITER = "\t"
@@ -80,7 +80,7 @@ def get_processed_files_path(output_base_folder, base_folder_name, date_str):
     """날짜별 처리된 파일 목록 파일 경로를 생성합니다."""
     year_month = date_str[:6]  #<\ctrl3348>MM 추출
     return os.path.join(output_base_folder, "mccb", base_folder_name, "Processed_files", year_month,
-                        f"{base_folder_name}_{PROCESSED_FILES_PREFIX}{date_str}.txt")
+                         f"{base_folder_name}_{PROCESSED_FILES_PREFIX}{date_str}.txt")
 
 def load_processed_files_from_file(output_base_folder, base_folder_name, target_date_str, processed_files):
     """처리된 파일 목록을 파일에서 로드하여 반환합니다."""
@@ -148,7 +148,7 @@ def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, qualit
 
         relative_path = os.path.relpath(input_path, watch_base_folder)
         base_name = os.path.basename(watch_base_folder.rstrip('\\'))
-        output_path = os.path.join(output_base_folder, "mccb", base_name, relative_path)
+        output_path = os.path.join(output_base_folder, r"mccb", base_name, relative_path) # raw string 적용
         output_dir = os.path.dirname(output_path)
         os.makedirs(output_dir, exist_ok=True)
 
@@ -272,9 +272,9 @@ def find_and_process_png_files(config, base_name, target_date_str, processed_fil
                                     save_processed_files_to_file(output_base_folder, base_folder_name, target_date_str, processed_files)
                                 else:
                                     print(f"[{base_folder_name}] PNG 파일이 아직 안정되지 않음: {png_path}")
-                        elif modified_date > target_date:
-                            # 과거 날짜 처리 후 현재 이후 날짜의 파일은 무시 (최적화)
-                            continue
+                            elif modified_date > target_date:
+                                # 과거 날짜 처리 후 현재 이후 날짜의 파일은 무시 (최적화)
+                                continue
 
                     except Exception as e:
                         logging.error(f"파일 정보 가져오기 오류: {png_path} - {e}")
