@@ -24,7 +24,7 @@ G_ENABLE_MONITORING = True  # True: 모니터링 기능 활성화, False: 비활
 G_ENABLE_FILE_SAVE = True  # True: 파일 저장 기능 활성화, False: 비활성화
 # G_MONITORING_DATA = [] # 수집된 모니터링 데이터를 임시로 저장할 리스트 (전역 변수 제거)
 G_LAST_SAVE_TIME = time.time()  # 마지막으로 데이터를 파일에 저장한 시간
-G_START_TIME_STR = datetime.now().strftime("%Y%m%d_%H%M%S") # 프로그램 시작 시각 (모니터링 파일명에 사용)
+G_START_TIME_STR = datetime.now().strftime("%Y%m%d_%H%M%S") # 프로그램 시작 시각 (전역 변수 유지)
 # G_PROCESSES = {}  # 실행된 프로그램 1의 process 객체를 저장할 딕셔너리 (키: "program1_인덱스", 값: subprocess.Popen 객체) (전역 변수 제거)
 G_PREV_DISK_IO = {}  # 각 프로그램 1 프로세스의 이전 디스크 I/O 카운터 값을 저장할 딕셔너리 (키: "program1_인덱스", 값: psutil.disk_io_counters() 객체)
 G_LOG_FILE = f"manager_{datetime.now().strftime('%Y%m%d')}.log"  # 날짜별 로그 파일 이름
@@ -89,13 +89,13 @@ def get_process_usage(pid, args):
         logging.error(f"프로세스 사용량 측정 중 오류: {e}")
         return None
 
-def _save_monitoring_data_to_csv(monitoring_data):
+def _save_monitoring_data_to_csv(monitoring_data, start_time_str):
     # 모니터링 데이터를 CSV 파일에 저장합니다.
-    global G_LAST_SAVE_TIME, G_START_TIME_STR
+    global G_LAST_SAVE_TIME # G_START_TIME_STR 제거
     if not monitoring_data:
         return
 
-    filename = f"monitoring_data_{datetime.now().strftime('%Y%m%d')}_{G_START_TIME_STR}.csv"
+    filename = f"monitoring_data_{datetime.now().strftime('%Y%m%d')}_{start_time_str}.csv"
     file_exists = os.path.isfile(filename) # 파일이 이미 존재하는지 확인
 
     try:
@@ -185,7 +185,7 @@ if __name__ == "__main__":
         processes = check_and_restart(processes) # 10초마다 재실행 확인 (원래 로직 유지)
 
         if G_ENABLE_FILE_SAVE and time.time() - G_LAST_SAVE_TIME >= G_FILE_SAVE_INTERVAL_SEC and monitoring_data:
-            _save_monitoring_data_to_csv(monitoring_data) # 파일 저장 간격이 되면 데이터 저장
+            _save_monitoring_data_to_csv(monitoring_data, G_START_TIME_STR) # 파일 저장 간격이 되면 데이터 저장, 시작 시간 전달
             monitoring_data = [] # 저장 후 데이터 리스트 비우기
 
         time.sleep(G_MONITORING_INTERVAL_SEC) # 설정된 모니터링 간격으로 대기
