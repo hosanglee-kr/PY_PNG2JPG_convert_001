@@ -1,12 +1,3 @@
-# 프로그램 2 (manager_with_full_monitor.py)
-#
-# 기능:
-#     - 설정된 프로그램 1 (png2jpg_Convert_v013.py 또는 png2jpg_Convert_v013.exe)을 지정된 argument 리스트에 따라 여러 개 실행하고 관리합니다.
-#     - 각 프로그램 1 인스턴스의 실행 상태를 주기적으로 (기본 10초) 확인하고, 작동이 중단된 경우 자동으로 재실행합니다.
-#     - 활성화된 경우 (G_ENABLE_MONITORING = True), 각 프로그램 1 인스턴스의 CPU 사용량, 메모리 사용량, 디스크 I/O 사용량 및 시스템 전체 네트워크 사용량을 주기적으로 (기본 1초) 측정합니다.
-#     - 활성화된 경우 (G_ENABLE_FILE_SAVE = True), 측정된 모니터링 데이터를 주기적으로 (기본 30초) 별도의 CSV 파일 (monitoring_data_YYYYMMDD_HHMMSS.csv)에 저장합니다.
-#     - 프로그램의 동작 로그를 날짜별 파일 (manager_YYYYMMDD.log)로 기록합니다.
-#     - 주요 설정값 (파일 경로, argument, 시간 간격 등)은 전역 상수로 정의되어 쉽게 변경할 수 있습니다.
 import subprocess
 import time
 import os
@@ -31,10 +22,10 @@ G_FILE_SAVE_INTERVAL_SEC = 30  # 초 단위 파일 저장 간격 (모니터링 �
 G_WORKER_EXECUTE_EXE = True  # True: 프로그램 1을 Python 스크립트로 실행, False: 실행 파일로 실행
 G_ENABLE_MONITORING = True  # True: 모니터링 기능 활성화, False: 비활성화
 G_ENABLE_FILE_SAVE = True  # True: 파일 저장 기능 활성화, False: 비활성화
-G_MONITORING_DATA = [] # 수집된 모니터링 데이터를 임시로 저장할 리스트
+# G_MONITORING_DATA = [] # 수집된 모니터링 데이터를 임시로 저장할 리스트 (전역 변수 제거)
 G_LAST_SAVE_TIME = time.time()  # 마지막으로 데이터를 파일에 저장한 시간
 G_START_TIME_STR = datetime.now().strftime("%Y%m%d_%H%M%S") # 프로그램 시작 시각 (모니터링 파일명에 사용)
-G_PROCESSES = {}  # 실행된 프로그램 1의 process 객체를 저장할 딕셔너리 (키: "program1_인덱스", 값: subprocess.Popen 객체)
+# G_PROCESSES = {}  # 실행된 프로그램 1의 process 객체를 저장할 딕셔너리 (키: "program1_인덱스", 값: subprocess.Popen 객체) (전역 변수 제거)
 G_PREV_DISK_IO = {}  # 각 프로그램 1 프로세스의 이전 디스크 I/O 카운터 값을 저장할 딕셔너리 (키: "program1_인덱스", 값: psutil.disk_io_counters() 객체)
 G_LOG_FILE = f"manager_{datetime.now().strftime('%Y%m%d')}.log"  # 날짜별 로그 파일 이름
 
@@ -52,7 +43,7 @@ else:
 # 프로그램 1을 실행할 때 사용할 argument 리스트 (전역 상수 G_DEFAULT_ARGUMENTS_LIST 사용)
 ARGUMENTS_LIST = G_DEFAULT_ARGUMENTS_LIST
 
-def _run_program(program_path, arguments):
+def _run_program(program_path, arguments, processes):
     # 프로그램을 실행하고 process 객체를 반환합니다.
     try:
         process = subprocess.Popen([program_path] + arguments) # subprocess.Popen을 사용하여 프로그램 실행
@@ -98,10 +89,10 @@ def get_process_usage(pid, args):
         logging.error(f"프로세스 사용량 측정 중 오류: {e}")
         return None
 
-def _save_monitoring_data_to_csv():
+def _save_monitoring_data_to_csv(monitoring_data):
     # 모니터링 데이터를 CSV 파일에 저장합니다.
-    global G_MONITORING_DATA, G_LAST_SAVE_TIME  #, G_START_TIME_STR
-    if not G_MONITORING_DATA:
+    global G_LAST_SAVE_TIME, G_START_TIME_STR
+    if not monitoring_data:
         return
 
     filename = f"monitoring_data_{datetime.now().strftime('%Y%m%d')}_{G_START_TIME_STR}.csv"
@@ -115,56 +106,58 @@ def _save_monitoring_data_to_csv():
             if not file_exists:
                 writer.writeheader()  # 파일이 없으면 헤더를 씁니다.
 
-            writer.writerows(G_MONITORING_DATA)  # 데이터 리스트의 각 딕셔너리를 CSV 행으로 씁니다.
+            writer.writerows(monitoring_data)  # 데이터 리스트의 각 딕셔너리를 CSV 행으로 씁니다.
 
         logging.info(f"모니터링 데이터를 {filename}에 저장했습니다.")
-        G_MONITORING_DATA = [] # 저장 후 데이터 리스트를 비웁니다.
+        # G_MONITORING_DATA = [] # 저장 후 데이터 리스트를 비웁니다. (main 함수에서 처리)
         G_LAST_SAVE_TIME = time.time()  # 마지막 저장 시간 업데이트
     except Exception as e:
         logging.error(f"CSV 파일 저장 중 오류: {e}")
 
-def check_and_restart():
+def check_and_restart(processes):
     # 실행 중인 프로그램을 확인하고 중단된 경우 재실행합니다.
-    global G_PROCESSES
-
+    updated_processes = processes.copy()
     for i, args in enumerate(ARGUMENTS_LIST):
         process_key = f"program1_{i}"
-        process_obj = G_PROCESSES.get(process_key) # 실행 중인 프로그램 1의 process 객체 가져오기
+        process_obj = updated_processes.get(process_key) # 실행 중인 프로그램 1의 process 객체 가져오기
 
         if process_obj is None: # 아직 실행되지 않은 경우
-            new_process = _run_program(PROGRAM1_PATH, args) # 프로그램 실행
+            new_process = _run_program(PROGRAM1_PATH, args, updated_processes) # 프로그램 실행
             if new_process:
-                G_PROCESSES[process_key] = new_process # 실행 성공 시 process 객체 저장
+                updated_processes[process_key] = new_process # 실행 성공 시 process 객체 저장
         elif process_obj.poll() is not None: # 프로그램이 종료된 경우 (poll()이 None이 아니면 종료됨)
             return_code = process_obj.returncode # 종료 코드 확인
             logging.info(f"프로그램 종료: {PROGRAM1_PATH} {' '.join(args)}, PID: {process_obj.pid}, 종료 코드: {return_code}")
-            del G_PROCESSES[process_key] # 종료된 프로세스를 딕셔너리에서 제거
+            del updated_processes[process_key] # 종료된 프로세스를 딕셔너리에서 제거
             # 재실행
-            new_process = _run_program(PROGRAM1_PATH, args) # 프로그램 재실행
+            new_process = _run_program(PROGRAM1_PATH, args, updated_processes) # 프로그램 재실행
             if new_process:
-                G_PROCESSES[process_key] = new_process # 재실행 성공 시 process 객체 저장
+                updated_processes[process_key] = new_process # 재실행 성공 시 process 객체 저장
             else:
                 logging.error(f"프로그램 재실행 실패: {PROGRAM1_PATH} {' '.join(args)}")
+    return updated_processes
 
-def _start_initial_processes():
+def _start_initial_processes(arguments_list, processes):
     # 초기 프로그램 1 인스턴스들을 실행합니다.
-    for i, args in enumerate(ARGUMENTS_LIST):
+    initial_processes = processes.copy()
+    for i, args in enumerate(arguments_list):
         process_key = f"program1_{i}"
-        process = _run_program(PROGRAM1_PATH, args)
+        process = _run_program(PROGRAM1_PATH, args, initial_processes)
         if process:
-            G_PROCESSES[process_key] = process
+            initial_processes[process_key] = process
+    return initial_processes
 
-def _monitor_processes():
-    # 실행 중인 프로그램들의 사용량을 측정하고 G_MONITORING_DATA에 저장합니다.
-    global G_MONITORING_DATA
-
-    for process_key, process_obj in G_PROCESSES.items():
+def _monitor_processes(processes, monitoring_data):
+    # 실행 중인 프로그램들의 사용량을 측정하고 monitoring_data에 저장합니다.
+    updated_monitoring_data = monitoring_data.copy()
+    for process_key, process_obj in processes.items():
         if process_obj.poll() is None and G_ENABLE_MONITORING: # 프로그램이 아직 실행 중이고 모니터링이 활성화된 경우
             process_index = int(process_key.split('_')[-1]) # process_key에서 인덱스 추출
             args = ARGUMENTS_LIST[process_index] # 해당 인덱스의 argument 가져오기
             usage_data = get_process_usage(process_obj.pid, args) # 프로세스 사용량 측정
             if usage_data:
-                G_MONITORING_DATA.append(usage_data) # 측정된 데이터 리스트에 추가
+                updated_monitoring_data.append(usage_data) # 측정된 데이터 리스트에 추가
+    return updated_monitoring_data
 
 if __name__ == "__main__":
     G_START_TIME_STR = datetime.now().strftime("%Y%m%d_%H%M%S") # 프로그램 시작 시각 기록
@@ -182,14 +175,17 @@ if __name__ == "__main__":
         print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 측정된 데이터를 {G_FILE_SAVE_INTERVAL_SEC}초마다 monitoring_data_{datetime.now().strftime('%Y%m%d')}_{G_START_TIME_STR}.csv 파일에 저장합니다.")
         logging.info(f"측정된 데이터를 {G_FILE_SAVE_INTERVAL_SEC}초마다 monitoring_data_{datetime.now().strftime('%Y%m%d')}_{G_START_TIME_STR}.csv 파일에 저장합니다.")
 
-    _start_initial_processes() # 초기 프로그램 1 인스턴스 실행
+    processes = {}
+    monitoring_data = []
+    processes = _start_initial_processes(ARGUMENTS_LIST, processes) # 초기 프로그램 1 인스턴스 실행
 
     while True:
-        _monitor_processes() # 실행 중인 프로그램들의 사용량 측정 및 저장
+        monitoring_data = _monitor_processes(processes, monitoring_data) # 실행 중인 프로그램들의 사용량 측정 및 저장
 
-        check_and_restart() # 10초마다 재실행 확인 (원래 로직 유지)
+        processes = check_and_restart(processes) # 10초마다 재실행 확인 (원래 로직 유지)
 
-        if G_ENABLE_FILE_SAVE and time.time() - G_LAST_SAVE_TIME >= G_FILE_SAVE_INTERVAL_SEC and G_MONITORING_DATA:
-            _save_monitoring_data_to_csv() # 파일 저장 간격이 되면 데이터 저장
+        if G_ENABLE_FILE_SAVE and time.time() - G_LAST_SAVE_TIME >= G_FILE_SAVE_INTERVAL_SEC and monitoring_data:
+            _save_monitoring_data_to_csv(monitoring_data) # 파일 저장 간격이 되면 데이터 저장
+            monitoring_data = [] # 저장 후 데이터 리스트 비우기
 
         time.sleep(G_MONITORING_INTERVAL_SEC) # 설정된 모니터링 간격으로 대기
