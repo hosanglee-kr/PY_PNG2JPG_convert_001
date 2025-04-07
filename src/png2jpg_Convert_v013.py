@@ -43,15 +43,23 @@ GLOBAL_GRAYSCALE_MODE = None  # 이미지 모드 (True: 흑백, False: 컬러, N
 
 # --- 함수 ---
 def load_config():
-    """설정 파일에서 설정을 로드합니다.
-
-    configparser 라이브러리를 사용하여 config.ini 파일을 읽고,
-    각 섹션별 설정을 딕셔너리 형태로 반환합니다.
-    파일이 없거나 읽기 오류가 발생하면 예외를 처리합니다.
-    """
+    """설정 파일에서 설정을 로드합니다."""
+    global GLOBAL_GRAYSCALE_MODE
     config = configparser.ConfigParser()
     try:
         config.read(CONFIG_FILE, encoding='utf-8')
+        if 'Image' in config and 'image_mode' in config['Image']:
+            image_mode = config['Image']['image_mode'].lower()
+            if image_mode == 'grayscale':
+                GLOBAL_GRAYSCALE_MODE = True
+            elif image_mode == 'color':
+                GLOBAL_GRAYSCALE_MODE = False
+            else:
+                print(f"경고: 설정 파일의 'image_mode' 값이 잘못되었습니다. (grayscale 또는 color). 기본 설정(자동)으로 유지합니다.")
+                GLOBAL_GRAYSCALE_MODE = None
+        else:
+            print("경고: 설정 파일에 [Image] 섹션 또는 'image_mode' 설정이 없습니다. 기본 설정(자동)으로 유지합니다.")
+            GLOBAL_GRAYSCALE_MODE = None
         return config
     except FileNotFoundError:
         print(f"오류: 설정 파일 '{CONFIG_FILE}'을 찾을 수 없습니다.")
@@ -91,14 +99,9 @@ def get_processed_files_path(output_base_folder, base_folder_name, date_str):
                         f"{base_folder_name}_{PROCESSED_FILES_PREFIX}{date_str}.txt")
 
 def load_processed_files_from_file(output_base_folder, base_folder_name, target_date_str):
-    """처리된 파일 목록을 파일에서 로드하여 전역 변수에 저장합니다.
-
-    주어진 날짜에 해당하는 처리된 파일 목록 파일을 읽어
-    전역 변수 `processed_files` 딕셔너리에 파일 경로와 최종 수정 시간을 저장합니다.
-    파일이 존재하지 않으면 `processed_files`를 빈 딕셔너리로 초기화합니다.
-    파일 읽기 중 오류가 발생하면 로깅합니다.
-    """
+    """처리된 파일 목록을 파일에서 로드하여 전역 변수에 저장합니다."""
     global processed_files
+    temp = processed_files  # 명시적으로 참조
     filepath = get_processed_files_path(output_base_folder, base_folder_name, target_date_str)
     if os.path.exists(filepath):
         try:
@@ -112,7 +115,7 @@ def load_processed_files_from_file(output_base_folder, base_folder_name, target_
             logging.error(f"처리된 파일 목록 로드 중 오류 발생: {e}")
     else:
         processed_files = {} # 해당 날짜 처리 이력이 없으면 초기화
-
+        
 def save_processed_files_to_file(output_base_folder, base_folder_name, target_date_str):
     """현재 처리된 파일 목록을 파일에 저장합니다.
 
@@ -178,6 +181,7 @@ def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, qualit
     """
     global GLOBAL_GRAYSCALE_MODE
     global processed_files
+    temp = processed_files  # 명시적으로 참조
 
     try:
         print(f"PNG 변환 시도: {input_path}")
@@ -224,6 +228,7 @@ def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, qualit
         os.rename(temp_output_path, final_output_path)
         print(f"변환 완료: {input_path} → {final_output_path} (품질: {quality}, 모드: {'흑백' if GLOBAL_GRAYSCALE_MODE else '컬러'})")
         processed_files[input_path] = os.path.getmtime(input_path)
+        
     except FileNotFoundError:
         logging.error(f"오류 - 입력 파일을 찾을 수 없음: {input_path}")
     except PermissionError:
