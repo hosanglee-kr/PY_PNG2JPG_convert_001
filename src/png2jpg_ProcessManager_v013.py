@@ -8,8 +8,8 @@ import logging
 
 # --- 전역 상수 정의 ---
 G_LOG_LEVEL = logging.INFO  # 로깅 레벨 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-G_DEFAULT_PROGRAM1_PATH_PY = "C:\\path\\to\\your\\png2jpg_Convert_v013.py"  # 프로그램 1 Python 스크립트 기본 경로
-G_DEFAULT_PROGRAM1_PATH_EXE = "C:\\path\\to\\your\\png2jpg_Convert_v013.exe"  # 프로그램 1 실행 파일 기본 경로
+G_DEFAULT_PROGRAM1_PATH_PY = r"C:\path\to\your\png2jpg_Convert_v013.py"  # 프로그램 1 Python 스크립트 기본 경로
+G_DEFAULT_PROGRAM1_PATH_EXE = r"C:\path\to\your\png2jpg_Convert_v013.exe"  # 프로그램 1 실행 파일 기본 경로
 G_DEFAULT_ARGUMENTS_LIST = [  # 프로그램 1 실행 시 사용할 기본 argument 리스트
     ["ABH125c_1"],
     ["ABH125c_2"],
