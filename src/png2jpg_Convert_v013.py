@@ -8,6 +8,7 @@ import logging
 import argparse
 import configparser
 
+
 # --- 전체 처리 기능 ---
 # 1. 설정 파일(config_v003.ini)을 로드하여 프로그램 동작에 필요한 경로, 간격, 품질 등의 설정을 읽어옵니다.
 # 2. 지정된 Base 폴더를 지속적으로 감시하며, 새로운 PNG 이미지 파일 또는 수정된 PNG 이미지 파일을 찾습니다.
