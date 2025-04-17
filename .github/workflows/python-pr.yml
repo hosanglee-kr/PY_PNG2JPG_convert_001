@@ -22,14 +22,14 @@ jobs:
       run: |
         pip install flake8
         # 필요하다면 flake8 설정 추가 (예: --max-line-length=120)
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Static Analysis with Pylint
       run: |
         pip install pylint
         # 필요하다면 pylint 설정 파일 추가 (.pylintrc)
-        pylint $(git ls-files '*.py')
+        find src/ -name "*.py" -print0 | xargs -0 pylint
     - name: Test with pytest
       run: |
         pip install pytest
-        pytest
+        pytest src/ # 또는 테스트 파일이 src 내부에 없다면 해당 경로 지정

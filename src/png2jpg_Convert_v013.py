@@ -8,6 +8,7 @@ import logging
 import argparse
 import configparser
 
+
 # --- 전체 처리 기능 ---
 # 1. 설정 파일(config_v003.ini)을 로드하여 프로그램 동작에 필요한 경로, 간격, 품질 등의 설정을 읽어옵니다.
 # 2. 지정된 Base 폴더를 지속적으로 감시하며, 새로운 PNG 이미지 파일 또는 수정된 PNG 이미지 파일을 찾습니다.
@@ -32,27 +33,29 @@ import configparser
 # - 흑백 또는 컬러 변환 옵션을 제공해야 합니다.
 
 # --- 설정 ---
-CONFIG_FILE = '.\src_v001\config_v003.ini'
+CONFIG_FILE = r'.\src_v001\config_v003.ini'
 SCAN_INTERVAL = 1  # 폴더 스캔 간격 (초)
 PROCESSED_FILES_PREFIX = "processed_files_"
 PROCESSED_FILE_DELIMITER = "\t"
 
-# --- 전역 변수 ---
-processed_files = {}  # 처리된 파일 목록 (파일 경로: 최종 수정 시간)
-GLOBAL_GRAYSCALE_MODE = None  # 이미지 모드 (True: 흑백, False: 컬러, None: 미결정)
-
 # --- 함수 ---
 def load_config():
-    """설정 파일에서 설정을 로드합니다.
-
-    configparser 라이브러리를 사용하여 config.ini 파일을 읽고,
-    각 섹션별 설정을 딕셔너리 형태로 반환합니다.
-    파일이 없거나 읽기 오류가 발생하면 예외를 처리합니다.
-    """
+    """설정 파일에서 설정을 로드하고 이미지 모드를 반환합니다."""
     config = configparser.ConfigParser()
+    global_grayscale_mode = None
     try:
         config.read(CONFIG_FILE, encoding='utf-8')
-        return config
+        if 'Image' in config and 'image_mode' in config['Image']:
+            image_mode = config['Image']['image_mode'].lower()
+            if image_mode == 'grayscale':
+                global_grayscale_mode = True
+            elif image_mode == 'color':
+                global_grayscale_mode = False
+            else:
+                print(f"경고: 설정 파일의 'image_mode' 값이 잘못되었습니다. (grayscale 또는 color). 기본 설정(자동)으로 유지합니다.")
+        else:
+            print("경고: 설정 파일에 [Image] 섹션 또는 'image_mode' 설정이 없습니다. 기본 설정(자동)으로 유지합니다.")
+        return config, global_grayscale_mode
     except FileNotFoundError:
         print(f"오류: 설정 파일 '{CONFIG_FILE}'을 찾을 수 없습니다.")
         sys.exit(1)
@@ -61,12 +64,7 @@ def load_config():
         sys.exit(1)
 
 def setup_logging(log_folder, base_folder_name):
-    """로깅을 설정합니다.
-
-    logging 라이브러리를 사용하여 에러 메시지를 파일에 기록하도록 설정합니다.
-    로그 파일은 날짜별로 생성되며, log_folder 아래에 연월 폴더를 생성하여 관리합니다.
-    로그 형식은 '시간 - 로그 레벨 - 메시지'로 지정합니다.
-    """
+    """로깅을 설정합니다."""
     today = datetime.now()
     year_month = today.strftime("%Y%m")
     day = today.strftime("%Y%m%d")
@@ -80,25 +78,13 @@ def setup_logging(log_folder, base_folder_name):
     )
 
 def get_processed_files_path(output_base_folder, base_folder_name, date_str):
-    """날짜별 처리된 파일 목록 파일 경로를 생성합니다.
-
-    출력 기본 폴더, Base 폴더 이름, 그리고 날짜 문자열을 이용하여
-    처리된 파일 목록을 저장할 파일의 전체 경로를 생성합니다.
-    경로는 'output_base_folder/mccb/base_folder_name/Processed_files/YYYYMM/base_folder_name_processed_files_YYYYMMDD.txt' 형식입니다.
-    """
-    year_month = date_str[:6]  # YYYYMM 추출
+    """날짜별 처리된 파일 목록 파일 경로를 생성합니다."""
+    year_month = date_str[:6]  #<\ctrl3348>MM 추출
     return os.path.join(output_base_folder, "mccb", base_folder_name, "Processed_files", year_month,
-                        f"{base_folder_name}_{PROCESSED_FILES_PREFIX}{date_str}.txt")
+                         f"{base_folder_name}_{PROCESSED_FILES_PREFIX}{date_str}.txt")
 
-def load_processed_files_from_file(output_base_folder, base_folder_name, target_date_str):
-    """처리된 파일 목록을 파일에서 로드하여 전역 변수에 저장합니다.
-
-    주어진 날짜에 해당하는 처리된 파일 목록 파일을 읽어
-    전역 변수 `processed_files` 딕셔너리에 파일 경로와 최종 수정 시간을 저장합니다.
-    파일이 존재하지 않으면 `processed_files`를 빈 딕셔너리로 초기화합니다.
-    파일 읽기 중 오류가 발생하면 로깅합니다.
-    """
-    global processed_files
+def load_processed_files_from_file(output_base_folder, base_folder_name, target_date_str, processed_files):
+    """처리된 파일 목록을 파일에서 로드하여 반환합니다."""
     filepath = get_processed_files_path(output_base_folder, base_folder_name, target_date_str)
     if os.path.exists(filepath):
         try:
@@ -112,18 +98,10 @@ def load_processed_files_from_file(output_base_folder, base_folder_name, target_
             logging.error(f"처리된 파일 목록 로드 중 오류 발생: {e}")
     else:
         processed_files = {} # 해당 날짜 처리 이력이 없으면 초기화
+    return processed_files
 
-def save_processed_files_to_file(output_base_folder, base_folder_name, target_date_str):
-    """현재 처리된 파일 목록을 파일에 저장합니다.
-
-    전역 변수 `processed_files` 딕셔너리의 내용을
-    주어진 날짜에 해당하는 처리된 파일 목록 파일에 저장합니다.
-    파일 경로는 `get_processed_files_path` 함수를 사용하여 생성합니다.
-    파일이 이미 존재하면 기존 내용을 읽어와 현재 처리된 파일 목록과 병합하고,
-    파일이 삭제된 경우 목록에서 제거합니다.
-    파일 쓰기 중 오류가 발생하면 로깅합니다.
-    """
-    global processed_files
+def save_processed_files_to_file(output_base_folder, base_folder_name, target_date_str, processed_files):
+    """현재 처리된 파일 목록을 파일에 저장합니다."""
     filepath = get_processed_files_path(output_base_folder, base_folder_name, target_date_str)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
@@ -163,29 +141,15 @@ def save_processed_files_to_file(output_base_folder, base_folder_name, target_da
     except Exception as e:
         logging.error(f"처리된 파일 목록 쓰기 중 오류 발생: {e}")
 
-def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, quality):
-    """PNG 이미지를 JPG 형식으로 변환합니다.
-
-    입력 PNG 파일 경로, 출력 기본 폴더, 감시 기본 폴더, 그리고 JPG 품질을 인자로 받습니다.
-    입력 파일의 상대 경로를 기준으로 출력 폴더 구조를 생성하고,
-    PNG 파일을 JPG로 변환하여 저장합니다.
-    변환 전에 임시 파일(.temp)을 생성하고, 변환 완료 후 최종 파일명으로 변경합니다.
-    기존에 동일한 이름의 JPG 파일이 존재하면 삭제합니다.
-    전역 변수 `GLOBAL_GRAYSCALE_MODE` 값에 따라 흑백 또는 컬러로 변환합니다.
-    변환 성공 시 `processed_files` 딕셔너리에 파일 경로와 수정 시간을 기록합니다.
-    발생할 수 있는 파일 관련 예외 (FileNotFoundError, PermissionError 등) 및
-    이미지 처리 관련 예외 (UnidentifiedImageError 등)를 처리하고 로깅합니다.
-    """
-    global GLOBAL_GRAYSCALE_MODE
-    global processed_files
-
+def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, quality, processed_files, global_grayscale_mode):
+    """PNG 이미지를 JPG 형식으로 변환합니다."""
     try:
         print(f"PNG 변환 시도: {input_path}")
         img = Image.open(input_path)
 
         relative_path = os.path.relpath(input_path, watch_base_folder)
         base_name = os.path.basename(watch_base_folder.rstrip('\\'))
-        output_path = os.path.join(output_base_folder, "mccb", base_name, relative_path)
+        output_path = os.path.join(output_base_folder, r"mccb", base_name, relative_path) # raw string 적용
         output_dir = os.path.dirname(output_path)
         os.makedirs(output_dir, exist_ok=True)
 
@@ -202,10 +166,10 @@ def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, qualit
                     logging.error(f"기존 파일 삭제 오류 {path}: {e}")
                     return
 
-        if GLOBAL_GRAYSCALE_MODE is True:
+        if global_grayscale_mode is True:
             img = img.convert('L')
             img.save(temp_output_path, "JPEG", quality=quality)
-        elif GLOBAL_GRAYSCALE_MODE is False:
+        elif global_grayscale_mode is False:
             img = img.convert('RGB')
             img.save(temp_output_path, "JPEG", quality=quality)
         else:
@@ -222,8 +186,10 @@ def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, qualit
                 img.save(temp_output_path, "JPEG", quality=quality)
 
         os.rename(temp_output_path, final_output_path)
-        print(f"변환 완료: {input_path} → {final_output_path} (품질: {quality}, 모드: {'흑백' if GLOBAL_GRAYSCALE_MODE else '컬러'})")
+        print(f"변환 완료: {input_path} → {final_output_path} (품질: {quality}, 모드: {'흑백' if global_grayscale_mode else '컬러'})")
         processed_files[input_path] = os.path.getmtime(input_path)
+        return processed_files
+
     except FileNotFoundError:
         logging.error(f"오류 - 입력 파일을 찾을 수 없음: {input_path}")
     except PermissionError:
@@ -232,16 +198,10 @@ def convert_png_to_jpg(input_path, output_base_folder, watch_base_folder, qualit
         logging.error(f"오류 - 이미지 파일을 열거나 읽을 수 없음: {input_path}")
     except Exception as e:
         logging.error(f"PNG 변환 중 예기치 않은 오류 발생: {input_path} - {e}")
+        return processed_files
 
 def is_file_stable(file_path, wait_time=1):
-    """파일이 완전히 쓰여졌는지 확인합니다.
-
-    주어진 파일 경로의 초기 크기를 확인한 후, 지정된 시간(기본값 1초) 동안 기다립니다.
-    기다린 후 파일의 현재 크기를 다시 확인하여 초기 크기와 동일하고, 파일 크기가 0보다 큰지 확인합니다.
-    이를 통해 파일이 현재 쓰여지고 있지 않고 완전히 저장되었는지 판단합니다.
-    파일을 찾을 수 없거나 권한 오류가 발생하면 로깅하고 False를 반환합니다.
-    기타 예외 발생 시에도 로깅하고 False를 반환합니다.
-    """
+    """파일이 완전히 쓰여졌는지 확인합니다."""
     try:
         initial_size = os.path.getsize(file_path)
         time.sleep(wait_time)
@@ -257,49 +217,35 @@ def is_file_stable(file_path, wait_time=1):
         logging.error(f"파일 안정성 확인 중 오류 발생: {file_path} - {e}")
         return False
 
-def find_and_process_png_files(config, base_name, target_date_str=None):
-    """주어진 Base 폴더에서 PNG 파일을 찾아 변환합니다.
-
-    설정 파일, Base 폴더 이름, 그리고 처리할 특정 날짜 문자열을 인자로 받습니다.
-    설정 파일에서 Base 폴더 경로, 출력 기본 폴더, JPG 품질 설정을 읽어옵니다.
-    주어진 Base 폴더 이름이 설정 파일에 없으면 오류 메시지를 출력하고 함수를 종료합니다.
-    처리할 날짜 문자열이 주어지지 않으면 현재 날짜를 사용합니다.
-    `load_processed_files_from_file` 함수를 호출하여 이미 처리된 파일 목록을 로드합니다.
-    `os.walk` 함수를 사용하여 Base 폴더 아래의 모든 PNG 파일을 검색합니다.
-    검색된 각 PNG 파일의 경로를 확인하여 특정 폴더 구조 규칙을 따르는지 검사합니다.
-    파일의 최종 수정 날짜가 처리 대상 날짜와 일치하는지 확인합니다.
-    이미 처리된 파일이 아니거나 수정된 파일인 경우, `is_file_stable` 함수를 호출하여 파일 안정성을 확인한 후
-    `convert_png_to_jpg` 함수를 호출하여 JPG로 변환합니다.
-    변환 후에는 `save_processed_files_to_file` 함수를 호출하여 처리된 파일 목록을 업데이트합니다.
-    파일 정보 가져오기 중 오류가 발생하면 로깅합니다.
-    """
+def find_and_process_png_files(config, base_name, target_date_str, processed_files, global_grayscale_mode):
+    """주어진 Base 폴더에서 PNG 파일을 찾아 변환합니다."""
     base_folders = dict(config.items('BaseFolders'))
     output_base_folder = config['Paths']['output_base_folder']
     jpg_quality = int(config['Image']['jpg_quality'])
 
     if base_name not in base_folders:
         print(f"오류: Base 폴더 이름 '{base_name}'이(가) config.ini [BaseFolders]에 없습니다.")
-        return
+        return processed_files
 
     base_folder = base_folders[base_name]
     base_folder_name = base_name.lower()
 
     if target_date_str:
         if not re.match(r'^\d{8}$', target_date_str):
-            print("오류: 날짜 형식이 잘못되었습니다. YYYYMMDD 형식으로 입력해주세요.")
-            return
+            print("오류: 날짜 형식이 잘못되었습니다.<\ctrl3348>MMDD 형식으로 입력해주세요.")
+            return processed_files
         try:
             target_date = datetime.strptime(target_date_str, "%Y%m%d").date()
         except ValueError:
-            print("오류: 유효하지 않은 날짜 형식입니다. YYYYMMDD 형식으로 입력해주세요.")
-            return
+            print("오류: 유효하지 않은 날짜 형식입니다.<\ctrl3348>MMDD 형식으로 입력해주세요.")
+            return processed_files
     else:
         target_date = datetime.now().date()
         target_date_str = target_date.strftime("%Y%m%d")
 
     watch_folder = base_folder
 
-    load_processed_files_from_file(output_base_folder, base_folder_name, target_date_str)
+    processed_files = load_processed_files_from_file(output_base_folder, base_folder_name, target_date_str, processed_files)
 
     print(f"[{base_folder_name}] 폴더 스캔 시작: {watch_folder} (날짜: {target_date_str})")
     for root, _, files in os.walk(watch_folder):
@@ -323,46 +269,38 @@ def find_and_process_png_files(config, base_name, target_date_str=None):
                             if png_path not in processed_files or processed_files[png_path] != modified_timestamp:
                                 print(f"[{base_folder_name}] 새로운 또는 수정된 PNG 발견 (날짜 일치): {png_path}")
                                 if is_file_stable(png_path):
-                                    convert_png_to_jpg(png_path, output_base_folder, base_folder, jpg_quality)
-                                    save_processed_files_to_file(output_base_folder, base_folder_name, target_date_str)
+                                    processed_files = convert_png_to_jpg(png_path, output_base_folder, base_folder, jpg_quality, processed_files, global_grayscale_mode)
+                                    save_processed_files_to_file(output_base_folder, base_folder_name, target_date_str, processed_files)
                                 else:
                                     print(f"[{base_folder_name}] PNG 파일이 아직 안정되지 않음: {png_path}")
-                        elif modified_date > target_date:
-                            # 과거 날짜 처리 후 현재 이후 날짜의 파일은 무시 (최적화)
-                            continue
+                            elif modified_date > target_date:
+                                # 과거 날짜 처리 후 현재 이후 날짜의 파일은 무시 (최적화)
+                                continue
 
                     except Exception as e:
                         logging.error(f"파일 정보 가져오기 오류: {png_path} - {e}")
+    return processed_files
 
 def main():
-    """스크립트의 주요 실행 로직을 포함합니다.
-
-    명령행 인자를 파싱하여 Base 폴더 이름과 처리할 날짜를 가져옵니다.
-    설정 파일을 로드하고, 로깅을 설정합니다.
-    무한 루프를 통해 `find_and_process_png_files` 함수를 주기적으로 호출하여
-    지정된 Base 폴더의 PNG 파일을 JPG로 변환하는 작업을 수행합니다.
-    폴더 스캔 간격은 `SCAN_INTERVAL` 전역 변수에 의해 결정됩니다.
-    """
+    """스크립트의 주요 실행 로직을 포함합니다."""
     parser = argparse.ArgumentParser(description="특정 Base 폴더의 PNG 이미지를 JPG로 변환합니다.")
     parser.add_argument("base_name", help="처리할 Base 폴더 이름 (config.ini에 정의).")
     parser.add_argument("date", nargs="?", default=datetime.now().strftime("%Y%m%d"),
                         help="처리할 특정 날짜 (YYYYMMDD). 생략 시 오늘 날짜 처리.")
 
+    args = parser.parse_args()
+    base_name = args.base_name.lower()
+    target_process_date = args.date
 
-    #args = parser.parse_args()
-    base_name = "ABH125c_1" # For testing purposes, hardcoding the base name
-    base_name = base_name.lower()
-
-    #target_process_date = args.date
-    target_process_date = datetime.now().strftime("%Y%m%d") # For testing purposes, hardcoding today's date
-
-    config = load_config()
+    config, global_grayscale_mode = load_config()
     output_base_folder = config['Paths']['output_base_folder']
     log_folder = config['Paths']['log_folder']
     setup_logging(log_folder, base_name)
 
+    processed_files = {}
+
     while True:
-        find_and_process_png_files(config, base_name, target_process_date)
+        processed_files = find_and_process_png_files(config, base_name, target_process_date, processed_files, global_grayscale_mode)
         time.sleep(SCAN_INTERVAL)
 
 if __name__ == "__main__":
